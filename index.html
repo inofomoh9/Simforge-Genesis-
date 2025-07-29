@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simforge Genesis v2 - Real Trailer Export</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background-color: black;
+    }
+  </style>
+</head>
+<body class="bg-black text-white p-6">
+  <h1 class="text-4xl font-bold text-center mb-6">🎬 Simforge Genesis v2 - Export Trailer</h1>
+  <div class="max-w-3xl mx-auto">
+    <textarea id="scriptInput" rows="8" class="w-full p-4 rounded text-black" placeholder="Type your movie script here..."></textarea>
+    <button onclick="generateScenes()" class="mt-4 w-full py-3 bg-blue-600 text-white rounded font-semibold">▶️ Generate + Export Trailer</button>
+  </div>
+
+  <div class="max-w-3xl mx-auto mt-6 text-center">
+    <video id="recordedVideo" controls class="w-full mt-4 hidden"></video>
+    <a id="downloadLink" class="hidden mt-4 inline-block bg-green-600 px-4 py-2 rounded text-white" download="simforge_trailer.webm">📥 Download Trailer</a>
+  </div>
+
+  <canvas id="sceneCanvas" width="800" height="450" class="mt-6 rounded shadow-md"></canvas>
+
+  <script>
+    const canvas = document.getElementById('sceneCanvas');
+    const ctx = canvas.getContext('2d');
+    const sampleBackgrounds = [
+      'https://images.unsplash.com/photo-1508921912186-1d1a45ebb3c1?fit=crop&w=800',
+      'https://images.unsplash.com/photo-1527766833261-b09c3163a791?fit=crop&w=800',
+      'https://images.unsplash.com/photo-1549921296-3a65d44f2d6e?fit=crop&w=800',
+      'https://images.unsplash.com/photo-1485846234645-a62644f84728?fit=crop&w=800'
+    ];
+
+    let mediaRecorder, recordedChunks = [];
+
+    async function generateScenes() {
+      const input = document.getElementById('scriptInput').value.trim();
+      if (!input) return alert('Please type a story first!');
+      const sentences = input.match(/[^.!?]+[.!?]+/g) || [input];
+
+      const stream = canvas.captureStream();
+      mediaRecorder = new MediaRecorder(stream);
+      recordedChunks = [];
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const video = document.getElementById('recordedVideo');
+        const link = document.getElementById('downloadLink');
+        video.src = url;
+        video.classList.remove('hidden');
+        link.href = url;
+        link.classList.remove('hidden');
+      };
+
+      mediaRecorder.start();
+      for (let i = 0; i < sentences.length; i++) {
+        await renderScene(sentences[i], i);
+      }
+      mediaRecorder.stop();
+    }
+
+    async function renderScene(text, index) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = sampleBackgrounds[index % sampleBackgrounds.length];
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+          ctx.fillStyle = 'white';
+          ctx.font = '24px sans-serif';
+          ctx.fillText(text, 20, canvas.height - 50);
+
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.onend = () => setTimeout(resolve, 2000); // wait 2 seconds after speaking
+          speechSynthesis.speak(utterance);
+        };
+      });
+    }
+  </script>
+</body>
+</html>
